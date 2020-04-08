@@ -388,11 +388,9 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 				return extHostLanguageFeatures.registerOnTypeFormattingEditProvider(extension, checkSelector(selector), provider, [firstTriggerCharacter].concat(moreTriggerCharacters));
 			},
 			registerDocumentSemanticTokensProvider(selector: vscode.DocumentSelector, provider: vscode.DocumentSemanticTokensProvider, legend: vscode.SemanticTokensLegend): vscode.Disposable {
-				checkProposedApiEnabled(extension);
 				return extHostLanguageFeatures.registerDocumentSemanticTokensProvider(extension, checkSelector(selector), provider, legend);
 			},
 			registerDocumentRangeSemanticTokensProvider(selector: vscode.DocumentSelector, provider: vscode.DocumentRangeSemanticTokensProvider, legend: vscode.SemanticTokensLegend): vscode.Disposable {
-				checkProposedApiEnabled(extension);
 				return extHostLanguageFeatures.registerDocumentRangeSemanticTokensProvider(extension, checkSelector(selector), provider, legend);
 			},
 			registerSignatureHelpProvider(selector: vscode.DocumentSelector, provider: vscode.SignatureHelpProvider, firstItem?: string | vscode.SignatureHelpProviderMetadata, ...remaining: string[]): vscode.Disposable {
@@ -487,6 +485,10 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 				checkProposedApiEnabled(extension);
 				return extHostTerminalService.onDidWriteTerminalData(listener, thisArg, disposables);
 			},
+			getEnvironmentVariableCollection(persistent?: boolean): vscode.EnvironmentVariableCollection {
+				checkProposedApiEnabled(extension);
+				return extHostTerminalService.getEnvironmentVariableCollection(extension, persistent);
+			},
 			get state() {
 				return extHostWindow.state;
 			},
@@ -546,9 +548,6 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 				return extHostProgress.withProgress(extension, { location: extHostTypes.ProgressLocation.SourceControl }, (progress, token) => task({ report(n: number) { /*noop*/ } }));
 			},
 			withProgress<R>(options: vscode.ProgressOptions, task: (progress: vscode.Progress<{ message?: string; worked?: number }>, token: vscode.CancellationToken) => Thenable<R>) {
-				if (typeof options.location === 'object') {
-					checkProposedApiEnabled(extension);
-				}
 				return extHostProgress.withProgress(extension, options, task);
 			},
 			createOutputChannel(name: string): vscode.OutputChannel {
@@ -583,9 +582,12 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			registerWebviewPanelSerializer: (viewType: string, serializer: vscode.WebviewPanelSerializer) => {
 				return extHostWebviews.registerWebviewPanelSerializer(extension, viewType, serializer);
 			},
-			registerCustomEditorProvider: (viewType: string, provider: vscode.CustomEditorProvider | vscode.CustomTextEditorProvider, options?: vscode.WebviewPanelOptions) => {
+			registerCustomEditorProvider: (viewType: string, provider: vscode.CustomTextEditorProvider, options?: { webviewOptions?: vscode.WebviewPanelOptions }) => {
+				return extHostWebviews.registerCustomEditorProvider(extension, viewType, provider, options?.webviewOptions);
+			},
+			registerCustomEditorProvider2: (viewType: string, provider: vscode.CustomEditorProvider, options?: { webviewOptions?: vscode.WebviewPanelOptions }) => {
 				checkProposedApiEnabled(extension);
-				return extHostWebviews.registerCustomEditorProvider(extension, viewType, provider, options);
+				return extHostWebviews.registerCustomEditorProvider(extension, viewType, provider, options?.webviewOptions);
 			},
 			registerDecorationProvider(provider: vscode.DecorationProvider) {
 				checkProposedApiEnabled(extension);
@@ -599,15 +601,6 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			},
 			createInputBox(): vscode.InputBox {
 				return extHostQuickOpen.createInputBox(extension.identifier);
-			},
-			registerNotebookProvider: (viewType: string, provider: vscode.NotebookProvider) => {
-				return extHostNotebook.registerNotebookProvider(extension, viewType, provider);
-			},
-			registerNotebookOutputRenderer: (type: string, outputFilter: vscode.NotebookOutputSelector, renderer: vscode.NotebookOutputRenderer) => {
-				return extHostNotebook.registerNotebookOutputRenderer(type, extension, outputFilter, renderer);
-			},
-			get activeNotebookDocument(): vscode.NotebookDocument | undefined {
-				return extHostNotebook.activeNotebookDocument;
 			},
 			get activeColorTheme(): vscode.ColorTheme {
 				checkProposedApiEnabled(extension);
@@ -907,6 +900,19 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			}
 		};
 
+		// namespace: notebook
+		const notebook: typeof vscode.notebook = {
+			registerNotebookProvider: (viewType: string, provider: vscode.NotebookProvider) => {
+				return extHostNotebook.registerNotebookProvider(extension, viewType, provider);
+			},
+			registerNotebookOutputRenderer: (type: string, outputFilter: vscode.NotebookOutputSelector, renderer: vscode.NotebookOutputRenderer) => {
+				return extHostNotebook.registerNotebookOutputRenderer(type, extension, outputFilter, renderer);
+			},
+			get activeNotebookDocument(): vscode.NotebookDocument | undefined {
+				return extHostNotebook.activeNotebookDocument;
+			}
+		};
+
 		return <typeof vscode>{
 			version: initData.version,
 			// namespaces
@@ -920,6 +926,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			comment,
 			comments,
 			tasks,
+			notebook,
 			window,
 			workspace,
 			// types
@@ -955,6 +962,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			DocumentLink: extHostTypes.DocumentLink,
 			DocumentSymbol: extHostTypes.DocumentSymbol,
 			EndOfLine: extHostTypes.EndOfLine,
+			EnvironmentVariableMutatorType: extHostTypes.EnvironmentVariableMutatorType,
 			EvaluatableExpression: extHostTypes.EvaluatableExpression,
 			EventEmitter: Emitter,
 			ExtensionKind: extHostTypes.ExtensionKind,
@@ -1026,12 +1034,12 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			CallHierarchyItem: extHostTypes.CallHierarchyItem,
 			DebugConsoleMode: extHostTypes.DebugConsoleMode,
 			Decoration: extHostTypes.Decoration,
-			WebviewContentState: extHostTypes.WebviewContentState,
 			UIKind: UIKind,
 			ColorThemeKind: extHostTypes.ColorThemeKind,
 			TimelineItem: extHostTypes.TimelineItem,
 			CellKind: extHostTypes.CellKind,
-			CellOutputKind: extHostTypes.CellOutputKind
+			CellOutputKind: extHostTypes.CellOutputKind,
+			CustomDocument: extHostTypes.CustomDocument,
 		};
 	};
 }

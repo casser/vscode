@@ -31,6 +31,7 @@ export interface IPaneStyles {
 	headerForeground?: Color;
 	headerBackground?: Color;
 	headerBorder?: Color;
+	leftBorder?: Color;
 }
 
 /**
@@ -105,7 +106,7 @@ export abstract class Pane extends Disposable implements IView {
 	get minimumSize(): number {
 		const headerSize = this.headerSize;
 		const expanded = !this.headerVisible || this.isExpanded();
-		const minimumBodySize = expanded ? this._minimumBodySize : this._orientation === Orientation.HORIZONTAL ? 50 : 0;
+		const minimumBodySize = expanded ? this.minimumBodySize : this._orientation === Orientation.HORIZONTAL ? 50 : 0;
 
 		return headerSize + minimumBodySize;
 	}
@@ -113,7 +114,7 @@ export abstract class Pane extends Disposable implements IView {
 	get maximumSize(): number {
 		const headerSize = this.headerSize;
 		const expanded = !this.headerVisible || this.isExpanded();
-		const maximumBodySize = expanded ? this._maximumBodySize : this._orientation === Orientation.HORIZONTAL ? 50 : 0;
+		const maximumBodySize = expanded ? this.maximumBodySize : this._orientation === Orientation.HORIZONTAL ? 50 : 0;
 
 		return headerSize + maximumBodySize;
 	}
@@ -214,7 +215,11 @@ export abstract class Pane extends Disposable implements IView {
 			.event(() => this.setExpanded(true), null));
 
 		this._register(domEvent(this.header, 'click')
-			(() => this.setExpanded(!this.isExpanded()), null));
+			(e => {
+				if (!e.defaultPrevented) {
+					this.setExpanded(!this.isExpanded());
+				}
+			}, null));
 
 		this.body = append(this.element, $('.pane-body'));
 		this.renderBody(this.body);
@@ -239,6 +244,8 @@ export abstract class Pane extends Disposable implements IView {
 	style(styles: IPaneStyles): void {
 		this.styles = styles;
 
+		this.element.style.borderLeft = this.styles.leftBorder && this.orientation === Orientation.HORIZONTAL ? `1px solid ${this.styles.leftBorder}` : '';
+
 		if (!this.header) {
 			return;
 		}
@@ -257,7 +264,7 @@ export abstract class Pane extends Disposable implements IView {
 
 		this.header.style.color = this.styles.headerForeground ? this.styles.headerForeground.toString() : '';
 		this.header.style.backgroundColor = this.styles.headerBackground ? this.styles.headerBackground.toString() : '';
-		this.header.style.borderTop = this.styles.headerBorder ? `1px solid ${this.styles.headerBorder}` : '';
+		this.header.style.borderTop = this.styles.headerBorder && this.orientation === Orientation.VERTICAL ? `1px solid ${this.styles.headerBorder}` : '';
 		this._dropBackground = this.styles.dropBackground;
 	}
 

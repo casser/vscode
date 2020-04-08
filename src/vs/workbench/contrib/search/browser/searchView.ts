@@ -13,7 +13,7 @@ import { IAction, ActionRunner } from 'vs/base/common/actions';
 import { Delayer } from 'vs/base/common/async';
 import * as errors from 'vs/base/common/errors';
 import { Event } from 'vs/base/common/event';
-import { Iterator } from 'vs/base/common/iterator';
+import { Iterable } from 'vs/base/common/iterator';
 import { KeyCode, KeyMod } from 'vs/base/common/keyCodes';
 import { dispose, IDisposable } from 'vs/base/common/lifecycle';
 import * as env from 'vs/base/common/platform';
@@ -533,7 +533,7 @@ export class SearchView extends ViewPane {
 		}
 	}
 
-	private createResultIterator(collapseResults: ISearchConfigurationProperties['collapseResults']): Iterator<ITreeElement<RenderableMatch>> {
+	private createResultIterator(collapseResults: ISearchConfigurationProperties['collapseResults']): Iterable<ITreeElement<RenderableMatch>> {
 		const folderMatches = this.searchResult.folderMatches()
 			.filter(fm => !fm.isEmpty())
 			.sort(searchMatchComparer);
@@ -542,20 +542,17 @@ export class SearchView extends ViewPane {
 			return this.createFolderIterator(folderMatches[0], collapseResults);
 		}
 
-		const foldersIt = Iterator.fromArray(folderMatches);
-		return Iterator.map(foldersIt, folderMatch => {
+		return Iterable.map(folderMatches, folderMatch => {
 			const children = this.createFolderIterator(folderMatch, collapseResults);
 			return <ITreeElement<RenderableMatch>>{ element: folderMatch, children };
 		});
 	}
 
-	private createFolderIterator(folderMatch: FolderMatch, collapseResults: ISearchConfigurationProperties['collapseResults']): Iterator<ITreeElement<RenderableMatch>> {
+	private createFolderIterator(folderMatch: FolderMatch, collapseResults: ISearchConfigurationProperties['collapseResults']): Iterable<ITreeElement<RenderableMatch>> {
 		const sortOrder = this.searchConfig.sortOrder;
-		const filesIt = Iterator.fromArray(
-			folderMatch.matches()
-				.sort((a, b) => searchMatchComparer(a, b, sortOrder)));
+		const matches = folderMatch.matches().sort((a, b) => searchMatchComparer(a, b, sortOrder));
 
-		return Iterator.map(filesIt, fileMatch => {
+		return Iterable.map(matches, fileMatch => {
 			const children = this.createFileIterator(fileMatch);
 
 			let nodeExists = true;
@@ -568,14 +565,12 @@ export class SearchView extends ViewPane {
 		});
 	}
 
-	private createFileIterator(fileMatch: FileMatch): Iterator<ITreeElement<RenderableMatch>> {
-		const matchesIt = Iterator.from(
-			fileMatch.matches()
-				.sort(searchMatchComparer));
-		return Iterator.map(matchesIt, r => (<ITreeElement<RenderableMatch>>{ element: r }));
+	private createFileIterator(fileMatch: FileMatch): Iterable<ITreeElement<RenderableMatch>> {
+		const matches = fileMatch.matches().sort(searchMatchComparer);
+		return Iterable.map(matches, r => (<ITreeElement<RenderableMatch>>{ element: r }));
 	}
 
-	private createIterator(match: FolderMatch | FileMatch | SearchResult, collapseResults: ISearchConfigurationProperties['collapseResults']): Iterator<ITreeElement<RenderableMatch>> {
+	private createIterator(match: FolderMatch | FileMatch | SearchResult, collapseResults: ISearchConfigurationProperties['collapseResults']): Iterable<ITreeElement<RenderableMatch>> {
 		return match instanceof SearchResult ? this.createResultIterator(collapseResults) :
 			match instanceof FolderMatch ? this.createFolderIterator(match, collapseResults) :
 				this.createFileIterator(match);
@@ -867,11 +862,11 @@ export class SearchView extends ViewPane {
 	focus(): void {
 		super.focus();
 
-		const updatedText = this.updateTextFromSelection();
+		const updatedText = this.updateTextFromSelection({ allowSearchOnType: false });
 		this.searchWidget.focus(undefined, undefined, updatedText);
 	}
 
-	updateTextFromSelection(allowUnselectedWord = true): boolean {
+	updateTextFromSelection({ allowUnselectedWord = true, allowSearchOnType = true }): boolean {
 		let updatedText = false;
 		const seedSearchStringFromSelection = this.configurationService.getValue<IEditorOptions>('editor').find!.seedSearchStringFromSelection;
 		if (seedSearchStringFromSelection) {
@@ -880,9 +875,14 @@ export class SearchView extends ViewPane {
 				if (this.searchWidget.searchInput.getRegex()) {
 					selectedText = strings.escapeRegExpCharacters(selectedText);
 				}
-				this.pauseSearching = true;
-				this.searchWidget.setValue(selectedText);
-				this.pauseSearching = false;
+
+				if (allowSearchOnType && !this.viewModel.searchResult.hasRemovedResults) {
+					this.searchWidget.setValue(selectedText);
+				} else {
+					this.pauseSearching = true;
+					this.searchWidget.setValue(selectedText);
+					this.pauseSearching = false;
+				}
 				updatedText = true;
 			}
 		}
@@ -1891,9 +1891,11 @@ registerThemingParticipant((theme: IColorTheme, collector: ICssStyleCollector) =
 		collector.addRule(`.monaco-workbench .search-view .monaco-list.element-focused .monaco-list-row.focused.selected:not(.highlighted) .action-label:focus { outline-color: ${outlineSelectionColor} }`);
 	}
 
-	const foregroundColor = theme.getColor(foreground);
-	if (foregroundColor) {
-		const fgWithOpacity = new Color(new RGBA(foregroundColor.rgba.r, foregroundColor.rgba.g, foregroundColor.rgba.b, 0.65));
-		collector.addRule(`.vs-dark .search-view .message { color: ${fgWithOpacity}; }`);
+	if (theme.type === 'dark') {
+		const foregroundColor = theme.getColor(foreground);
+		if (foregroundColor) {
+			const fgWithOpacity = new Color(new RGBA(foregroundColor.rgba.r, foregroundColor.rgba.g, foregroundColor.rgba.b, 0.65));
+			collector.addRule(`.search-view .message { color: ${fgWithOpacity}; }`);
+		}
 	}
 });
