@@ -462,29 +462,7 @@ export function getSelectionKeyboardEvent(typeArg = 'keydown', preserveFocus?: b
 	return e;
 }
 
-export abstract class ResourceNavigator<T> extends Disposable {
-
-	static createListResourceNavigator<T>(list: WorkbenchList<T> | WorkbenchPagedList<T>, options?: IResourceNavigatorOptions): ResourceNavigator<number> {
-		return new class extends ResourceNavigator<number> {
-			constructor() {
-				super(list, options);
-			}
-		}();
-	}
-
-	static createTreeResourceNavigator<T, TFilterData>(tree: WorkbenchObjectTree<T, TFilterData> | WorkbenchCompressibleObjectTree<T, TFilterData> | WorkbenchDataTree<any, T, TFilterData> | WorkbenchAsyncDataTree<any, T, TFilterData> | WorkbenchCompressibleAsyncDataTree<any, T, TFilterData>,
-		options?: IResourceNavigatorOptions): ResourceNavigator<T> {
-		return new class extends ResourceNavigator<T> {
-			constructor() {
-				super(tree, {
-					...{
-						openOnSingleClick: tree.openOnSingleClick
-					},
-					...(options || {})
-				});
-			}
-		}();
-	}
+abstract class ResourceNavigator<T> extends Disposable {
 
 	private readonly options: IResourceNavigatorOptions;
 
@@ -499,17 +477,13 @@ export abstract class ResourceNavigator<T> extends Disposable {
 			onDidChangeFocus: Event<{ browserEvent?: UIEvent }>,
 			onDidChangeSelection: Event<{ browserEvent?: UIEvent }>,
 			onDidOpen: Event<{ browserEvent?: UIEvent }>,
+			readonly openOnSingleClick?: boolean
 		},
 		options?: IResourceNavigatorOptions
 	) {
 		super();
 
-		this.options = {
-			...{
-				openOnSelection: true
-			},
-			...(options || {})
-		};
+		this.options = { openOnSelection: true, ...(options || {}) };
 
 		this.registerListeners();
 	}
@@ -557,7 +531,7 @@ export abstract class ResourceNavigator<T> extends Disposable {
 			!!(<SelectionKeyboardEvent>browserEvent).preserveFocus :
 			!isDoubleClick;
 
-		if (this.options.openOnSingleClick || isDoubleClick || isKeyboardEvent) {
+		if (this.treeOrList.openOnSingleClick || isDoubleClick || isKeyboardEvent) {
 			const sideBySide = browserEvent instanceof MouseEvent && (browserEvent.ctrlKey || browserEvent.metaKey || browserEvent.altKey);
 			this.open(preserveFocus, isDoubleClick || isMiddleClick, sideBySide, browserEvent);
 		}
@@ -574,6 +548,18 @@ export abstract class ResourceNavigator<T> extends Disposable {
 			element: this.treeOrList.getSelection()[0],
 			browserEvent
 		});
+	}
+}
+
+export class ListResourceNavigator<T> extends ResourceNavigator<number> {
+	constructor(list: WorkbenchList<T> | WorkbenchPagedList<T>, options?: IResourceNavigatorOptions) {
+		super(list, options);
+	}
+}
+
+export class TreeResourceNavigator<T, TFilterData> extends ResourceNavigator<T> {
+	constructor(tree: WorkbenchObjectTree<T, TFilterData> | WorkbenchCompressibleObjectTree<T, TFilterData> | WorkbenchDataTree<any, T, TFilterData> | WorkbenchAsyncDataTree<any, T, TFilterData> | WorkbenchCompressibleAsyncDataTree<any, T, TFilterData>, options: IResourceNavigatorOptions = {}) {
+		super(tree, options);
 	}
 }
 

@@ -36,6 +36,7 @@ export interface INativeEnvironmentService extends IEnvironmentService {
 	installSourcePath: string;
 
 	extensionsPath?: string;
+	extensionsDownloadPath?: string;
 	builtinExtensionsPath: string;
 
 	globalStorageHome: string;
@@ -92,7 +93,10 @@ export class EnvironmentService implements INativeEnvironmentService {
 	get userDataSyncLogResource(): URI { return URI.file(path.join(this.logsPath, 'userDataSync.log')); }
 
 	@memoize
-	get sync(): 'on' | 'off' { return this.args.sync === 'off' ? 'off' : 'on'; }
+	get sync(): 'on' | 'off' | undefined { return this.args.sync; }
+
+	@memoize
+	get enableSyncByDefault(): boolean { return false; }
 
 	@memoize
 	get machineSettingsResource(): URI { return resources.joinPath(URI.file(path.join(this.userDataPath, 'Machine')), 'settings.json'); }
@@ -145,6 +149,10 @@ export class EnvironmentService implements INativeEnvironmentService {
 		} else {
 			return path.normalize(path.join(getPathFromAmdModule(require, ''), '..', 'extensions'));
 		}
+	}
+
+	get extensionsDownloadPath(): string | undefined {
+		return parsePathArg(this._args['extensions-download-dir'], process);
 	}
 
 	@memoize

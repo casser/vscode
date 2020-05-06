@@ -308,6 +308,10 @@ export class SearchAccessibilityProvider implements IListAccessibilityProvider<R
 	) {
 	}
 
+	getWidgetAriaLabel(): string {
+		return nls.localize('search', "Search");
+	}
+
 	getAriaLabel(element: RenderableMatch): string | null {
 		if (element instanceof FolderMatch) {
 			return element.resource ?
@@ -329,10 +333,10 @@ export class SearchAccessibilityProvider implements IListAccessibilityProvider<R
 			const range = match.range();
 			const matchText = match.text().substr(0, range.endColumn + 150);
 			if (replace) {
-				return nls.localize('replacePreviewResultAria', "Replace term {0} with {1} at column position {2} in line with text {3}", matchString, match.replaceString, range.startColumn + 1, matchText);
+				return nls.localize('replacePreviewResultAria', "Replace '{0}' with '{1}' at column {2} in line {3}", matchString, match.replaceString, range.startColumn + 1, matchText);
 			}
 
-			return nls.localize('searchResultAria', "Found term {0} at column position {1} in line with text {2}", matchString, range.startColumn + 1, matchText);
+			return nls.localize('searchResultAria', "Found '{0}' at column {1} in line '{2}'", matchString, range.startColumn + 1, matchText);
 		}
 		return null;
 	}
@@ -374,7 +378,7 @@ export class SearchDND implements ITreeDragAndDrop<RenderableMatch> {
 
 		if (resources.length) {
 			// Apply some datatransfer types to allow for dragging the element outside of the application
-			this.instantiationService.invokeFunction(fillResourceDataTransfers, resources, originalEvent);
+			this.instantiationService.invokeFunction(fillResourceDataTransfers, resources, undefined, originalEvent);
 		}
 	}
 
