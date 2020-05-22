@@ -40,12 +40,14 @@ export interface IWebviewService {
 		id: string,
 		options: WebviewOptions,
 		contentOptions: WebviewContentOptions,
+		extension: WebviewExtensionDescription | undefined,
 	): WebviewElement;
 
 	createWebviewOverlay(
 		id: string,
 		options: WebviewOptions,
 		contentOptions: WebviewContentOptions,
+		extension: WebviewExtensionDescription | undefined,
 	): WebviewOverlay;
 
 	setIcons(id: string, value: WebviewIcons | undefined): void;
@@ -84,6 +86,7 @@ export interface Webview extends IDisposable {
 	readonly onDidScroll: Event<{ scrollYPercentage: number }>;
 	readonly onDidWheel: Event<IMouseWheelEvent>;
 	readonly onDidUpdateState: Event<string | undefined>;
+	readonly onDidReload: Event<void>;
 	readonly onMessage: Event<any>;
 	readonly onMissingCsp: Event<ExtensionIdentifier>;
 

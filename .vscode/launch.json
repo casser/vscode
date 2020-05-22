@@ -20,10 +20,7 @@
 			"port": 5870,
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"
-			],
-			"presentation": {
-				"hidden": true
-			}
+			]
 		},
 		{
 			"type": "pwa-chrome",
@@ -230,6 +227,25 @@
 			}
 		},
 		{
+			"type": "node",
+			"request": "launch",
+			"name": "Main Process",
+			"runtimeExecutable": "${workspaceFolder}/scripts/code.sh",
+			"windows": {
+				"runtimeExecutable": "${workspaceFolder}/scripts/code.bat",
+			},
+			"runtimeArgs": [
+				"--no-cached-data"
+			],
+			"outFiles": [
+				"${workspaceFolder}/out/**/*.js"
+			],
+			"presentation": {
+				"group": "1_vscode",
+				"order": 1
+			}
+		},
+		{
 			"type": "chrome",
 			"request": "launch",
 			"name": "VS Code (Web, Chrome)",
@@ -294,7 +310,7 @@
 			"name": "TypeScript Extension Tests",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				"${workspaceFolder}/extensions/typescript-language-features/test-fixtures",
+				"${workspaceFolder}/extensions/typescript-language-features/test-workspace",
 				"--extensionDevelopmentPath=${workspaceFolder}/extensions/typescript-language-features",
 				"--extensionTestsPath=${workspaceFolder}/extensions/typescript-language-features/out/test"
 			],
